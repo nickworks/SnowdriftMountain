@@ -302,8 +302,8 @@ void ASnowdriftMountainCharacter::Raycast2()
 	rotBoard = FRotator(pitch, 0, roll);
 
 	float thresh = capsuleHalfHeight + raiseCastOrigins + 10.f;
-
-	if(avgDisBack < thresh || avgDisFront < thresh) StatePrimaryPhys = EBoarderState::OnGround;
+	if (avgDisBack == 0 || avgDisFront == 0) return;
+	if (avgDisBack < thresh || avgDisFront < thresh) StatePrimaryPhys = EBoarderState::OnGround;
 }
 
 void ASnowdriftMountainCharacter::BeginPlay()
