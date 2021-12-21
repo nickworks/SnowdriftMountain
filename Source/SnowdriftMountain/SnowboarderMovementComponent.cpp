@@ -7,7 +7,7 @@
 USnowboarderMovementComponent::USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer) {
 
-	GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Red, "startup move component");
+	if(GEngine) GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Red, "startup move component");
 }
 void USnowboarderMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 {
@@ -29,7 +29,10 @@ void USnowboarderMovementComponent::OnMovementModeChanged(EMovementMode Previous
 {
     Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 
-	GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed");
+	FString wasMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(PreviousMovementMode));
+	FString iisMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(MovementMode));
+
+	GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed from " + wasMode + " to " + iisMode);
 }
 
 

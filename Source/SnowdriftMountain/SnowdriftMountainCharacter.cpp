@@ -54,7 +54,7 @@ ASnowdriftMountainCharacter::ASnowdriftMountainCharacter(const class FObjectInit
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(BaseMesh);
+	CameraBoom->SetupAttachment(BoardRoot);
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
@@ -162,11 +162,10 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 	}
 	*/
 
-	float strength = StatePrimaryPhys == EBoarderState::OnGround ? 200.f : 2.f;
-
-	// animate to it:
-	BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, strength));
+	//float strength = (StatePrimaryPhys == EBoarderState::OnGround ? 2000.f : 2.f);
+	//BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, strength));
 	
+	BoardRoot->SetRelativeRotation(rotBoard);
 
 }
 
@@ -309,10 +308,11 @@ void ASnowdriftMountainCharacter::Raycast2()
 
 void ASnowdriftMountainCharacter::BeginPlay()
 {
+	Super::BeginPlay();
 	auto* move1 = GetMovementComponent();
 	if (move1) {
 		auto *move2 = Cast<USnowboarderMovementComponent>(move1);
-		//GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Setting mode to FALLING");
+		if(move2) GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Purple, "custom move component!");
 		//move2->SetMovementMode(EMovementMode::MOVE_Falling);
 
 		//GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, move2->HasValidData() ? "HasValidData TRUE" : "Has ValidData FALSE");
