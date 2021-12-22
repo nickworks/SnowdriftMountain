@@ -57,6 +57,7 @@ protected:
 
 	EBoarderState StatePrimaryPhys;
 
+	void ToggleBoard();
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void TurnAtRate(float Rate);

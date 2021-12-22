@@ -131,15 +131,25 @@ void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, flo
     FVector dirBoard = (alignVelocity < 0) ? -boardForward : boardForward;
     if (alignVelocity < 0) alignVelocity *= -1;
 
+    alignVelocity *= alignVelocity;
+    alignVelocity *= alignVelocity;
+
     // how much the velocity is aligned with Down
     float alignDown = FVector::DotProduct(dirVelocity, FVector(0, 0, -1));
+    //if (alignDown < .01f) alignDown = .01f;
+
+    alignDown *= (alignDown < 0) ? -alignDown : alignDown; // keep negative numbers negative
+
+    float slope = FMath::Acos(CurrentFloor.HitResult.Normal.Z);
+
+    //GEngine->AddOnScreenDebugMessage(-1, 0.2f, FColor::Blue, "slope: " + FString::SanitizeFloat(slope));
 
     FVector vel = Velocity;
-    vel += dirDownhill * dt * 1000 * alignDownHill;
-    vel += dirBoard * dt * 1000 * alignVelocity * alignDown;
+    vel += dirDownhill * dt * 10000 * alignDownHill * (slope);
+    vel += dirBoard * dt * 10000 * alignVelocity * alignDown;
 
     // clamp:
-    const float maxSpeed = 1600.f;
+    const float maxSpeed = 2000.f;
     if (vel.SizeSquared() > maxSpeed * maxSpeed) vel = vel * maxSpeed / vel.Size();
     Velocity = vel;
 }

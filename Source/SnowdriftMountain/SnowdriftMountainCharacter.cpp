@@ -54,7 +54,7 @@ ASnowdriftMountainCharacter::ASnowdriftMountainCharacter(const class FObjectInit
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(BoardRoot);
+	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
@@ -91,6 +91,8 @@ void ASnowdriftMountainCharacter::SetupPlayerInputComponent(class UInputComponen
 	// handle touch devices
 	PlayerInputComponent->BindTouch(IE_Pressed, this, &ASnowdriftMountainCharacter::TouchStarted);
 	PlayerInputComponent->BindTouch(IE_Released, this, &ASnowdriftMountainCharacter::TouchStopped);
+
+	PlayerInputComponent->BindAction("ToggleBoard", IE_Released, this, &ASnowdriftMountainCharacter::ToggleBoard);
 }
 
 
@@ -166,11 +168,12 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 	//float strength = (StatePrimaryPhys == EBoarderState::OnGround ? 2000.f : 2.f);
 	//BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, strength));
 	
-	//BoardRoot->SetRelativeRotation(rotBoard);
-
-	BoardRoot->SetRelativeRotation((GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Custom) ? rotBoard : FRotator(90.f, 0, 0));
-	GetSnowboardMovement()->AccelerateDownHill(BoardRoot->GetForwardVector(), dt);
-
+	auto *move = GetSnowboardMovement();
+	if (move && move->MovementMode == MOVE_Custom) {
+		BoardRoot->SetRelativeRotation(rotBoard);
+		BoardRoot->SetWorldLocation(GetSnowboardMovement()->CurrentFloor.HitResult.ImpactPoint);
+		move->AccelerateDownHill(BoardRoot->GetForwardVector(), dt);
+	}
 
 }
 
@@ -248,7 +251,14 @@ void ASnowdriftMountainCharacter::Raycast()
 
 void ASnowdriftMountainCharacter::Raycast2()
 {
-	FVector center = GetActorLocation() + FVector(0, 0, 50);
+	float boardHalfWidth = 30.f;
+	float boardHalfLength = 30.f;
+
+	float capsuleHalfHeight = 0.f;//GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+	float raiseCastOrigins = 50.f;
+
+
+	FVector center = GetActorLocation() + FVector(0, 0, raiseCastOrigins);
 	FVector normal = FVector(0, 0, 0);
 	float avgDis = 0;
 	int count = 0;
@@ -257,11 +267,6 @@ void ASnowdriftMountainCharacter::Raycast2()
 	FTransform xform = RootComponent->GetComponentTransform();
 
 
-	float boardHalfWidth = 30.f;
-	float boardHalfLength = 30.f;
-
-	float capsuleHalfHeight = 0.f;//GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-	float raiseCastOrigins = 50.f;
 
 	FVector disToEnd = FVector(0, 0, -1000);
 	ECollisionChannel channel = ECollisionChannel::ECC_GameTraceChannel1;
@@ -322,20 +327,23 @@ void ASnowdriftMountainCharacter::Raycast2()
 void ASnowdriftMountainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	auto* move1 = GetMovementComponent();
-	if (move1) {
-		auto *move2 = Cast<USnowboarderMovementComponent>(move1);
-		if(move2) GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Purple, "custom move component!");
-		//move2->SetMovementMode(EMovementMode::MOVE_Falling);
-
-		//GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, move2->HasValidData() ? "HasValidData TRUE" : "Has ValidData FALSE");
-		
-
-		//GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Setting mode to BOARDING");
-		//move2->SetMovementMode(EMovementMode::MOVE_Custom, static_cast<int>(ECustomMovementType::Boarding));
-	}
 }
+void ASnowdriftMountainCharacter::ToggleBoard() {
+	auto *move = GetSnowboardMovement();
 
+	if (move->DefaultLandMovementMode == MOVE_Walking) {
+
+		GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "TOGGLE to custom");
+		//move->SetGroundMovementMode(MOVE_Custom);
+		move->DefaultLandMovementMode = MOVE_Custom;
+	}
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "TOGGLE to walk");
+		//move->SetGroundMovementMode(MOVE_Walking);
+		move->DefaultLandMovementMode = MOVE_Walking;
+	}
+	move->SetMovementMode(move->DefaultLandMovementMode);
+}
 
 void ASnowdriftMountainCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
