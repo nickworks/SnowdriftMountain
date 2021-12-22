@@ -24,12 +24,15 @@ class SNOWDRIFTMOUNTAIN_API USnowboarderMovementComponent : public UCharacterMov
 
 public:
 		
-protected:
-		USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer);
-		void PhysCustom(float deltaTime, int32 Iterations) override;
-		void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
+	UFUNCTION()
+	void AccelerateDownHill(FVector forward, float dt);
 
-		UFUNCTION()
-		void PhysBoard(float deltaTime, int32 Iterations);
+protected:
+	USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer);
+	void PhysCustom(float deltaTime, int32 Iterations) override;
+	void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
+
+	UFUNCTION()
+	void PhysBoard(float deltaTime, int32 Iterations);
 
 };

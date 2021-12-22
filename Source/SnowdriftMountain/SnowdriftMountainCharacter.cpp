@@ -123,8 +123,9 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 		//TheRoot->SetAngularDamping(1.f);
 		break;
 	}
-	/*
 	if (StatePrimaryPhys == EBoarderState::OnGround || StatePrimaryPhys == EBoarderState::OnGroundCouching) {
+	}
+	/**
 
 		//FVector force = forward * alignDown * 500000000.f * GetWorld()->GetDeltaSeconds();
 		//if (alignDown < 0) alignDown = 0;
@@ -138,7 +139,7 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 		const FVector forward = BoardRoot->GetForwardVector();
 		const FVector initVel = GetCharacterMovement()->Velocity;
 		
-
+		
 		// how much our board aligns with the current velocity
 		float alignVel = FVector::DotProduct(GetActorForwardVector().GetSafeNormal2D(), initVel.GetSafeNormal2D());
 		FVector boardDir = (alignVel < 0) ? -forward : forward;
@@ -158,15 +159,27 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 		const float maxSpeed = 2000.f;
 		if (vel.SizeSquared() > maxSpeed * maxSpeed) vel = vel * maxSpeed / vel.Size();
 		GetCharacterMovement()->Velocity = vel;
-
+		
 	}
-	*/
+	/**/
 
 	//float strength = (StatePrimaryPhys == EBoarderState::OnGround ? 2000.f : 2.f);
 	//BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, strength));
 	
-	BoardRoot->SetRelativeRotation(rotBoard);
+	//BoardRoot->SetRelativeRotation(rotBoard);
 
+	BoardRoot->SetRelativeRotation((GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Custom) ? rotBoard : FRotator(90.f, 0, 0));
+	GetSnowboardMovement()->AccelerateDownHill(BoardRoot->GetForwardVector(), dt);
+
+
+}
+
+USnowboarderMovementComponent* ASnowdriftMountainCharacter::GetSnowboardMovement()
+{
+
+	auto *mover = Cast<USnowboarderMovementComponent>(GetCharacterMovement());
+
+	return (mover) ? mover : nullptr;
 }
 
 void ASnowdriftMountainCharacter::Raycast()

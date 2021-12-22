@@ -66,6 +66,9 @@ protected:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void Tick(float dt) override;
+
+	class USnowboarderMovementComponent* GetSnowboardMovement();
+
 	void Raycast();
 	void Raycast2();
 
