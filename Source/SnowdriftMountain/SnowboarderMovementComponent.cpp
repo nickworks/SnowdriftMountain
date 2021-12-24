@@ -25,12 +25,16 @@ void USnowboarderMovementComponent::PhysCustom(float deltaTime, int32 Iterations
 }
 void USnowboarderMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
 {
+
+    FVector oldVel = Velocity;
+
     Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 
 	FString wasMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(PreviousMovementMode));
 	FString iisMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(MovementMode));
 
-    //GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed from " + wasMode + " to " + iisMode);
+    GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed from " + wasMode + " to " + iisMode);
+
 }
 
 
@@ -55,6 +59,7 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
     FVector Adjusted = Velocity * deltaTime;
     FStepDownResult stepDown;
     MoveAlongFloor(Velocity, deltaTime, &stepDown);
+
     // Update floor.
     if (stepDown.bComputedFloor)
     {
@@ -63,11 +68,11 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
         FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false, NULL);
     }
     
-    FHitResult Hit = CurrentFloor.HitResult;
     
     if (true)
     {
         /**
+            FHitResult Hit = CurrentFloor.HitResult;
         const FVector OldHitNormal = Hit.Normal;
         const FVector OldHitImpactNormal = Hit.ImpactNormal;
         FVector Delta = ComputeSlideVector(Adjusted, 0.3f, OldHitNormal, Hit);
@@ -77,42 +82,45 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
         /**/
     }
 
-    if (CurrentFloor.IsWalkableFloor() && !CurrentFloor.HitResult.bStartPenetrating)
+    if (CurrentFloor.IsWalkableFloor())
     {
         //////////////////////////////////////// DO SLIDING:
 
-        
-        if (CurrentFloor.bBlockingHit) {
+        if (!CurrentFloor.HitResult.bStartPenetrating) {
+            if (CurrentFloor.bBlockingHit) {
 
-            const FVector OldHitNormal = Hit.Normal;
-            const FVector OldHitImpactNormal = Hit.ImpactNormal;
-            
-            const FVector ProjectedNormal = ConstrainNormalToPlane(CurrentFloor.HitResult.Normal);
-            FVector Delta = FVector::VectorPlaneProject(FVector(0, 0, -1), ProjectedNormal) * deltaTime;
-            
-            //SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
+                const FVector OldHitNormal = CurrentFloor.HitResult.Normal;
+                const FVector OldHitImpactNormal = CurrentFloor.HitResult.ImpactNormal;
 
-            //Velocity += Delta * deltaTime * 10.f;
+                const FVector ProjectedNormal = ConstrainNormalToPlane(CurrentFloor.HitResult.Normal);
+                FVector Delta = FVector::VectorPlaneProject(FVector(0, 0, -1), ProjectedNormal) * deltaTime;
 
-            //TwoWallAdjust(Delta, Hit, OldHitNormal);
+                //SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
 
-            //MaintainHorizontalGroundVelocity();
+                //Velocity += Delta * deltaTime * 10.f;
+
+                TwoWallAdjust(Delta, CurrentFloor.HitResult, OldHitNormal);
+
+                //MaintainHorizontalGroundVelocity();
+            }
+            else {
+                GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "floor NOT blocking?");
+            }
         }
         else {
-            GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "floor NOT blocking?");
-
+            GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "pentrating floor?");
         }
 
     } else {
-        GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "bad floor, start falling?");
+        GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "bad floor, start falling");
         SetMovementMode(MOVE_Falling);
     }
 
-
-    Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / deltaTime;
+ 
+    Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation).GetSafeNormal() * Velocity.Size();
 
 }
-void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, float dt) {
+void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, float leanUphill, float dt) {
 
 
     if (MovementMode != MOVE_Custom) return;
@@ -145,8 +153,8 @@ void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, flo
     //GEngine->AddOnScreenDebugMessage(-1, 0.2f, FColor::Blue, "slope: " + FString::SanitizeFloat(slope));
 
     FVector vel = Velocity;
-    vel += dirDownhill * dt * 10000 * alignDownHill * (slope);
-    vel += dirBoard * dt * 10000 * alignVelocity * alignDown;
+    vel += dt * dirDownhill * alignDownHill * slope * slope * 10000;//FMath::Lerp(10000, 100, leanUphill);
+    vel += dt * dirBoard * alignVelocity * alignDown * 10000;//FMath::Lerp(0, 10000, leanUphill);
 
     // clamp:
     const float maxSpeed = 2000.f;

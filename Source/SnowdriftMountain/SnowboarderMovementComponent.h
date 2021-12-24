@@ -25,7 +25,7 @@ class SNOWDRIFTMOUNTAIN_API USnowboarderMovementComponent : public UCharacterMov
 public:
 		
 	UFUNCTION()
-	void AccelerateDownHill(FVector forward, float dt);
+	void AccelerateDownHill(FVector forward, float leanUphill, float dt);
 
 protected:
 	USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer);

@@ -102,77 +102,12 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 
 	Super::Tick(dt);
 
-
-	// do line trace:
-	Raycast2();
-	
-
-	switch (StatePrimaryPhys) {
-	case EBoarderState::InAir:
-	case EBoarderState::InAirCrouching:
-		//TheRoot->SetLinearDamping(.01f);
-		//TheRoot->SetAngularDamping(1.f);
-		break;
-	case EBoarderState::OnGround:
-	case EBoarderState::OnGroundCouching:
-		
-		//TheRoot->SetLinearDamping(.2f);
-		//TheRoot->SetAngularDamping(1.f);
-
-		break;
-	case EBoarderState::Ragdoll:
-		//TheRoot->SetLinearDamping(.3f);
-		//TheRoot->SetAngularDamping(1.f);
-		break;
-	}
-	if (StatePrimaryPhys == EBoarderState::OnGround || StatePrimaryPhys == EBoarderState::OnGroundCouching) {
-	}
-	/**
-
-		//FVector force = forward * alignDown * 500000000.f * GetWorld()->GetDeltaSeconds();
-		//if (alignDown < 0) alignDown = 0;
-		//GetCharacterMovement()->AddForce(force);
-		//GetCharacterMovement()->Velocity += force;
-
-		//FVector torque = FVector::CrossProduct(TheRoot->GetUpVector(), dirBoardUp) * 50.f;
-	    //TheRoot->AddTorqueInRadians(torque, NAME_None, true);
-
-		// this approach "redirects" the velocity along forward vector
-		const FVector forward = BoardRoot->GetForwardVector();
-		const FVector initVel = GetCharacterMovement()->Velocity;
-		
-		
-		// how much our board aligns with the current velocity
-		float alignVel = FVector::DotProduct(GetActorForwardVector().GetSafeNormal2D(), initVel.GetSafeNormal2D());
-		FVector boardDir = (alignVel < 0) ? -forward : forward;
-		if (alignVel < 0) alignVel *= -1;
-		//alignVel *= alignVel;
-
-		float alignDown = FVector::DotProduct(boardDir, FVector(0, 0, -1));
-		alignDown += 1;
-		alignDown /= 2;
-		
-		FVector vel = initVel;
-		vel.Z = 0;
-
-		vel = GetCharacterMovement()->Velocity + boardDir * initVel.Size() * alignVel * alignDown * dt * 20;
-
-		// clamp:
-		const float maxSpeed = 2000.f;
-		if (vel.SizeSquared() > maxSpeed * maxSpeed) vel = vel * maxSpeed / vel.Size();
-		GetCharacterMovement()->Velocity = vel;
-		
-	}
-	/**/
-
-	//float strength = (StatePrimaryPhys == EBoarderState::OnGround ? 2000.f : 2.f);
-	//BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, strength));
-	
 	auto *move = GetSnowboardMovement();
-	if (move && move->MovementMode == MOVE_Custom) {
+	if (move){// && move->MovementMode == MOVE_Custom) {
+		BoardRoot->SetWorldLocation(move->CurrentFloor.HitResult.ImpactPoint);
+		Raycast2();
 		BoardRoot->SetRelativeRotation(rotBoard);
-		BoardRoot->SetWorldLocation(GetSnowboardMovement()->CurrentFloor.HitResult.ImpactPoint);
-		move->AccelerateDownHill(BoardRoot->GetForwardVector(), dt);
+		move->AccelerateDownHill(BoardRoot->GetForwardVector(), 1, dt);
 	}
 
 }
@@ -255,18 +190,16 @@ void ASnowdriftMountainCharacter::Raycast2()
 	float boardHalfLength = 30.f;
 
 	float capsuleHalfHeight = 0.f;//GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-	float raiseCastOrigins = 50.f;
+	float raiseCastOrigins = 150.f;
 
 
-	FVector center = GetActorLocation() + FVector(0, 0, raiseCastOrigins);
+	FVector offset = FVector(0, 0, raiseCastOrigins);
 	FVector normal = FVector(0, 0, 0);
 	float avgDis = 0;
 	int count = 0;
 
 	StatePrimaryPhys = EBoarderState::InAir;
-	FTransform xform = RootComponent->GetComponentTransform();
-
-
+	FTransform xform = BoardRoot->GetComponentTransform();
 
 	FVector disToEnd = FVector(0, 0, -1000);
 	ECollisionChannel channel = ECollisionChannel::ECC_GameTraceChannel1;
@@ -280,6 +213,9 @@ void ASnowdriftMountainCharacter::Raycast2()
 	FVector startBR = xform.TransformPosition(FVector(-boardHalfLength, +boardHalfWidth, raiseCastOrigins));
 	FVector startFL = xform.TransformPosition(FVector(+boardHalfLength, -boardHalfWidth, raiseCastOrigins));
 	FVector startFR = xform.TransformPosition(FVector(+boardHalfLength, +boardHalfWidth, raiseCastOrigins));
+
+	startBL.Z = startBR.Z = startFL.Z = startFR.Z = BoardRoot->GetComponentLocation().Z + raiseCastOrigins;
+
 
 	bool didHitBL = GetWorld()->LineTraceSingleByChannel(hitBL, startBL, startBL + disToEnd, channel);
 	bool didHitBR = GetWorld()->LineTraceSingleByChannel(hitBR, startBR, startBR + disToEnd, channel);
