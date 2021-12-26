@@ -106,7 +106,7 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 	if (move){// && move->MovementMode == MOVE_Custom) {
 		BoardRoot->SetWorldLocation(move->CurrentFloor.HitResult.ImpactPoint);
 		Raycast2();
-		BoardRoot->SetRelativeRotation(rotBoard);
+		BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, 10.f));
 		move->AccelerateDownHill(BoardRoot->GetForwardVector(), 1, dt);
 	}
 
@@ -187,10 +187,10 @@ void ASnowdriftMountainCharacter::Raycast()
 void ASnowdriftMountainCharacter::Raycast2()
 {
 	float boardHalfWidth = 30.f;
-	float boardHalfLength = 30.f;
+	float boardHalfLength = 80.f;
 
 	float capsuleHalfHeight = 0.f;//GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-	float raiseCastOrigins = 150.f;
+	float raiseCastOrigins = 250.f;
 
 
 	FVector offset = FVector(0, 0, raiseCastOrigins);
@@ -209,10 +209,10 @@ void ASnowdriftMountainCharacter::Raycast2()
 	FHitResult hitFL;
 	FHitResult hitFR;
 
-	FVector startBL = xform.TransformPosition(FVector(-boardHalfLength, -boardHalfWidth, raiseCastOrigins));
-	FVector startBR = xform.TransformPosition(FVector(-boardHalfLength, +boardHalfWidth, raiseCastOrigins));
-	FVector startFL = xform.TransformPosition(FVector(+boardHalfLength, -boardHalfWidth, raiseCastOrigins));
-	FVector startFR = xform.TransformPosition(FVector(+boardHalfLength, +boardHalfWidth, raiseCastOrigins));
+	FVector startBL = xform.TransformPosition(FVector(-boardHalfLength, -boardHalfWidth, 0));
+	FVector startBR = xform.TransformPosition(FVector(-boardHalfLength, +boardHalfWidth, 0));
+	FVector startFL = xform.TransformPosition(FVector(+boardHalfLength, -boardHalfWidth, 0));
+	FVector startFR = xform.TransformPosition(FVector(+boardHalfLength, +boardHalfWidth, 0));
 
 	startBL.Z = startBR.Z = startFL.Z = startFR.Z = BoardRoot->GetComponentLocation().Z + raiseCastOrigins;
 
@@ -253,7 +253,9 @@ void ASnowdriftMountainCharacter::Raycast2()
 	if(avgDisBack > 0 && avgDisFront > 0) pitch = FMath::RadiansToDegrees(FMath::Atan((avgDisBack - avgDisFront) / (boardHalfLength * 2)));
 	if(avgDisLeft > 0 && avgDisRight > 0) roll = FMath::RadiansToDegrees(FMath::Atan((avgDisRight - avgDisLeft) / (boardHalfWidth * 2)));
 
-	rotBoard = FRotator(pitch, 0, roll);
+	FMath::WindRelativeAnglesDegrees(rotBoard.Roll, roll);
+	//GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::SanitizeFloat(roll));
+	rotBoard = (FQuat(FRotator(pitch, 0, 0)) * FQuat(FRotator(0, 0, roll))).Rotator();
 
 	float thresh = capsuleHalfHeight + raiseCastOrigins + 10.f;
 	if (avgDisBack == 0 || avgDisFront == 0) return;
