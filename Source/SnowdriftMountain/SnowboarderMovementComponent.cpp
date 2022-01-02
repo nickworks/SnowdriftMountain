@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "SnowboarderMovementComponent.h"
 
+
 USnowboarderMovementComponent::USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer) {
 
@@ -26,17 +27,29 @@ void USnowboarderMovementComponent::PhysCustom(float deltaTime, int32 Iterations
 void USnowboarderMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
 {
 
-    FVector oldVel = Velocity;
 
     Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 
-	FString wasMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(PreviousMovementMode));
-	FString iisMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(MovementMode));
-
-    GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed from " + wasMode + " to " + iisMode);
+    
+    // FString wasMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(PreviousMovementMode));
+    // FString iisMode = StaticEnum<EMovementMode>()->GetNameStringByValue(static_cast<int32>(MovementMode));
+    // GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "Move mode changed from " + wasMode + " to " + iisMode);
+    
+    if (MovementMode == EMovementMode::MOVE_Custom) {
+        GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "velocity when landing: " + Velocity.ToCompactString());
+    }
 
 }
 
+bool USnowboarderMovementComponent::CanAttemptJump() const
+{
+    // may want to change this is we want to allow "crouching" on the board
+    return IsJumpAllowed() && !bWantsToCrouch && (IsMovingOnGround() || IsFalling()); ;
+}
+bool USnowboarderMovementComponent::IsMovingOnGround() const
+{
+    return ((MovementMode == MOVE_Walking) || (MovementMode == MOVE_Custom)) && UpdatedComponent;
+}
 
 void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
 {
@@ -52,34 +65,18 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
     const FVector OldLocation = UpdatedComponent->GetComponentLocation();
     const FQuat PawnRotation = UpdatedComponent->GetComponentQuat();
 
-    //CalcVelocity(deltaTime, GroundFriction, false, GetMaxBrakingDeceleration());
-    //Velocity += FVector::VectorPlaneProject(FVector(0, 0, -1), CurrentFloor.HitResult.Normal) * deltaTime * 2000;
+    //MaintainHorizontalGroundVelocity();
 
     // Attempt to move:
-    FVector Adjusted = Velocity * deltaTime;
     FStepDownResult stepDown;
     MoveAlongFloor(Velocity, deltaTime, &stepDown);
 
-    // Update floor.
+    // Update floor
     if (stepDown.bComputedFloor)
     {
         CurrentFloor = stepDown.FloorResult;
     } else {
         FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, false, NULL);
-    }
-    
-    
-    if (true)
-    {
-        /**
-            FHitResult Hit = CurrentFloor.HitResult;
-        const FVector OldHitNormal = Hit.Normal;
-        const FVector OldHitImpactNormal = Hit.ImpactNormal;
-        FVector Delta = ComputeSlideVector(Adjusted, 0.3f, OldHitNormal, Hit);
-
-        SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
-        //TwoWallAdjust(Delta, Hit, OldHitNormal);
-        /**/
     }
 
     if (CurrentFloor.IsWalkableFloor())
@@ -95,13 +92,8 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
                 const FVector ProjectedNormal = ConstrainNormalToPlane(CurrentFloor.HitResult.Normal);
                 FVector Delta = FVector::VectorPlaneProject(FVector(0, 0, -1), ProjectedNormal) * deltaTime;
 
-                //SafeMoveUpdatedComponent(Delta, PawnRotation, true, Hit);
-
-                //Velocity += Delta * deltaTime * 10.f;
-
                 TwoWallAdjust(Delta, CurrentFloor.HitResult, OldHitNormal);
 
-                //MaintainHorizontalGroundVelocity();
             }
             else {
                 GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "floor NOT blocking?");
@@ -117,9 +109,12 @@ void USnowboarderMovementComponent::PhysBoard(float deltaTime, int32 Iterations)
     }
 
  
-    Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation).GetSafeNormal() * Velocity.Size();
+    // this clamps the velocity
+    // however, it also seems to cause a hiccup when the player lands... 
+    //Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation).GetSafeNormal() * Velocity.Size();
 
 }
+
 void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, float leanUphill, float dt) {
 
 
@@ -127,8 +122,7 @@ void USnowboarderMovementComponent::AccelerateDownHill(FVector boardForward, flo
 
     // which way is down hill?
     FVector dirDownhill = FVector::VectorPlaneProject(FVector(0, 0, -1), CurrentFloor.HitResult.Normal);
-
-    
+ 
     // how much the board is aligned with the downhill direction
     float alignDownHill = FVector::DotProduct(boardForward.GetSafeNormal2D(), dirDownhill.GetSafeNormal2D());
     if (alignDownHill < 0) alignDownHill *= -1;

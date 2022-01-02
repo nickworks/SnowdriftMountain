@@ -39,8 +39,6 @@ public:
 	//ASnowdriftMountainCharacter();
 	ASnowdriftMountainCharacter(const class FObjectInitializer& ObjectInitializer);
 
-	//virtual UPawnMovementComponent* GetMovementComponent() const override;
-
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseTurnRate;
@@ -48,6 +46,7 @@ public:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
+
 
 protected:
 
@@ -65,12 +64,14 @@ protected:
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
+	void StartJump();
+	void StopJump();
+
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void Tick(float dt) override;
 
 	class USnowboarderMovementComponent* GetSnowboardMovement();
 
-	void Raycast();
 	void Raycast2();
 
 public:

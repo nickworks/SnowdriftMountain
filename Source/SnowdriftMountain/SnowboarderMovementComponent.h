@@ -27,6 +27,9 @@ public:
 	UFUNCTION()
 	void AccelerateDownHill(FVector forward, float leanUphill, float dt);
 
+	virtual bool CanAttemptJump() const;
+	virtual bool IsMovingOnGround() const;
+
 protected:
 	USnowboarderMovementComponent(const FObjectInitializer& ObjectInitializer);
 	void PhysCustom(float deltaTime, int32 Iterations) override;

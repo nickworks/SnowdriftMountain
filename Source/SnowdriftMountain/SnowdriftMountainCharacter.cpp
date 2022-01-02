@@ -65,12 +65,7 @@ ASnowdriftMountainCharacter::ASnowdriftMountainCharacter(const class FObjectInit
 
 	
 }
-/*
-UPawnMovementComponent* ASnowdriftMountainCharacter::GetMovementComponent() const
-{
-	return MoveComponent;
-}
-*/
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -93,9 +88,10 @@ void ASnowdriftMountainCharacter::SetupPlayerInputComponent(class UInputComponen
 	PlayerInputComponent->BindTouch(IE_Released, this, &ASnowdriftMountainCharacter::TouchStopped);
 
 	PlayerInputComponent->BindAction("ToggleBoard", IE_Released, this, &ASnowdriftMountainCharacter::ToggleBoard);
+	
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ASnowdriftMountainCharacter::StartJump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ASnowdriftMountainCharacter::StopJump);
 }
-
-
 
 void ASnowdriftMountainCharacter::Tick(float dt)
 {
@@ -104,7 +100,7 @@ void ASnowdriftMountainCharacter::Tick(float dt)
 
 	auto *move = GetSnowboardMovement();
 	if (move){// && move->MovementMode == MOVE_Custom) {
-		BoardRoot->SetWorldLocation(move->CurrentFloor.HitResult.ImpactPoint);
+		if(move->CurrentFloor.IsWalkableFloor()) BoardRoot->SetWorldLocation(move->CurrentFloor.HitResult.ImpactPoint);
 		Raycast2();
 		BoardRoot->SetRelativeRotation(UKismetMathLibrary::RInterpTo(BoardRoot->GetRelativeRotation(), rotBoard, dt, 10.f));
 		move->AccelerateDownHill(BoardRoot->GetForwardVector(), 1, dt);
@@ -118,70 +114,6 @@ USnowboarderMovementComponent* ASnowdriftMountainCharacter::GetSnowboardMovement
 	auto *mover = Cast<USnowboarderMovementComponent>(GetCharacterMovement());
 
 	return (mover) ? mover : nullptr;
-}
-
-void ASnowdriftMountainCharacter::Raycast()
-{
-
-	FVector center = GetActorLocation() + FVector(0, 0, 50);
-	FVector normal = FVector(0, 0, 0);
-	float avgDis = 0;
-	int count = 0;
-
-	StatePrimaryPhys = EBoarderState::InAir;
-	FTransform xform = RootComponent->GetComponentTransform();
-
-
-	float boardHalfWidth = 30.f;
-	float boardHalfLength = 100.f;
-
-	float verticalOffset = 96.f;
-
-	for (int x = -1; x <= 1; x++) {
-		for (int y = -1; y <= 1; y++) {
-
-			if (x == 0 || y == 0) continue;
-
-			FHitResult hit;
-			
-			
-			FVector start = FVector(x * boardHalfLength, y * boardHalfWidth, 0);
-			FVector end = start + FVector(0, 0, -1000);
-
-			start = xform.TransformPosition(start);
-			end =   xform.TransformPosition(end);
-
-			ECollisionChannel channel = ECollisionChannel::ECC_GameTraceChannel1;
-
-			if (GetWorld()->LineTraceSingleByChannel(hit, start, end, channel)) {
-
-				UKismetSystemLibrary::DrawDebugLine(GetWorld(), start, end, FColor::Yellow, 0, 1);
-
-				avgDis += hit.Distance;
-				if ((hit.Distance - verticalOffset) < 100) {
-					count++;
-					normal += hit.ImpactNormal;
-
-					float p = (hit.Distance - verticalOffset) / 100;
-					if (p < 0) p = 0;
-					if (p > 1) p = 1;
-
-					p *= p * p * p;
-					p = 1 - p;
-
-					//FVector force = p * RootComponent->GetUpVector() * 1000000.f * GetWorld()->GetDeltaSeconds();
-					//RootComponent->AddForceAtLocationLocal(force, FVector(x * boardHalfLength, y * boardHalfWidth, 0));
-				}
-			}
-		}
-	}
-	dirBoardUp = normal / count;
-	if(count > 2){
-		StatePrimaryPhys = EBoarderState::OnGround;
-
-	}
-	
-
 }
 
 void ASnowdriftMountainCharacter::Raycast2()
@@ -268,18 +200,21 @@ void ASnowdriftMountainCharacter::BeginPlay()
 }
 void ASnowdriftMountainCharacter::ToggleBoard() {
 	auto *move = GetSnowboardMovement();
+	if (!move) return;
 
-	if (move->DefaultLandMovementMode == MOVE_Walking) {
+	if (!move->IsMovingOnGround()) return;
+	
+	// are we walking?
+	bool isWalk = (move->DefaultLandMovementMode == MOVE_Walking);
+	// flip it:
+	isWalk = !isWalk;
 
-		GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "TOGGLE to custom");
-		//move->SetGroundMovementMode(MOVE_Custom);
-		move->DefaultLandMovementMode = MOVE_Custom;
-	}
-	else {
-		GEngine->AddOnScreenDebugMessage(-1, 3., FColor::Cyan, "TOGGLE to walk");
-		//move->SetGroundMovementMode(MOVE_Walking);
-		move->DefaultLandMovementMode = MOVE_Walking;
-	}
+	// update some values:
+	move->DefaultLandMovementMode = isWalk ? MOVE_Walking : MOVE_Custom;
+	BoardRoot->SetVisibility(isWalk ? false : true, true); 
+	move->SetWalkableFloorAngle(isWalk ? 80 : 90);
+
+	// change mode:
 	move->SetMovementMode(move->DefaultLandMovementMode);
 }
 
@@ -291,6 +226,17 @@ void ASnowdriftMountainCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FV
 void ASnowdriftMountainCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
 		//StopJumping();
+}
+
+void ASnowdriftMountainCharacter::StartJump()
+{
+
+	Jump();
+}
+
+void ASnowdriftMountainCharacter::StopJump()
+{
+	StopJumping();
 }
 
 void ASnowdriftMountainCharacter::TurnAtRate(float Rate)
